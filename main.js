@@ -49,6 +49,11 @@ function getMode() {
   return loadState().mode === 'tray' ? 'tray' : 'widget';
 }
 
+function getOpacity() {
+  const v = loadState().opacity;
+  return typeof v === 'number' ? v : 1;
+}
+
 const EXTRACT_SCRIPT = `(function(){
   const text = document.body.innerText || '';
   const sessionM = text.match(/현재\\s*세션\\s*\\n([^\\n]+)\\s*\\n(\\d+)%\\s*사용됨/);
@@ -67,7 +72,7 @@ function createWidgetWindow() {
   const state = loadState();
   widgetWin = new BrowserWindow({
     width: 168,
-    height: 202,
+    height: 150,
     x: typeof state.x === 'number' ? state.x : undefined,
     y: typeof state.y === 'number' ? state.y : undefined,
     frame: false,
@@ -77,6 +82,7 @@ function createWidgetWindow() {
     skipTaskbar: true,
     hasShadow: false,
     show: getMode() === 'widget',
+    opacity: getOpacity(),
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -202,12 +208,27 @@ function applyMode(mode) {
   }
 }
 
+function applyOpacity(opacity) {
+  saveState({ opacity });
+  if (widgetWin && !widgetWin.isDestroyed()) {
+    widgetWin.setOpacity(opacity);
+  }
+}
+
 function createTray() {
   tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
   tray.setToolTip('Claude 사용량 위젯');
 
   const buildMenu = () => {
     const mode = getMode();
+    const opacity = getOpacity();
+    const opacityMenu = [1, 0.85, 0.7, 0.55].map((v) => ({
+      label: `${Math.round(v * 100)}%`,
+      type: 'radio',
+      checked: Math.abs(opacity - v) < 0.001,
+      click: () => { applyOpacity(v); tray.setContextMenu(buildMenu()); }
+    }));
+
     return Menu.buildFromTemplate([
       {
         label: '위젯 카드로 보기',
@@ -221,6 +242,7 @@ function createTray() {
         checked: mode === 'tray',
         click: () => { applyMode('tray'); tray.setContextMenu(buildMenu()); }
       },
+      { label: '위젯 투명도', submenu: opacityMenu },
       { type: 'separator' },
       { label: '지금 새로고침', click: () => pollUsage() },
       { label: '로그인 창 열기', click: () => openLoginWindow() },
@@ -251,14 +273,25 @@ function createTray() {
 ipcMain.on('refresh-now', () => pollUsage());
 ipcMain.on('open-login', () => openLoginWindow());
 
-app.whenReady().then(() => {
-  createWidgetWindow();
-  createWorkerWindow();
-  createTray();
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!widgetWin) { createWidgetWindow(); return; }
+    widgetWin.show();
+    widgetWin.focus();
+  });
 
-  pollUsage();
-  pollTimer = setInterval(pollUsage, POLL_INTERVAL_MS);
-});
+  app.whenReady().then(() => {
+    createWidgetWindow();
+    createWorkerWindow();
+    createTray();
+
+    pollUsage();
+    pollTimer = setInterval(pollUsage, POLL_INTERVAL_MS);
+  });
+}
 
 app.on('window-all-closed', (e) => {
   // 트레이 상주 앱이므로 창이 다 닫혀도 종료하지 않음
