@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: transparent;
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    overflow: hidden;
+  }
+  #card {
+    width: 100%; height: 100%;
+    background: rgba(28, 25, 23, 0.88);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    -webkit-app-region: drag;
+    padding: 10px 8px 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #f5f0ea;
+  }
+  #topbar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    -webkit-app-region: drag;
+    font-size: 10px;
+    color: #b8afa4;
+    margin-bottom: 2px;
+  }
+  #topbar .title-wrap { display: flex; align-items: center; gap: 5px; }
+  #topbar span.title { font-weight: 600; letter-spacing: 0.3px; }
+  #topbar .btn {
+    -webkit-app-region: no-drag;
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 2px 4px;
+  }
+  #topbar .btn:hover { opacity: 1; }
+  #mascot {
+    -webkit-app-region: drag;
+    margin: 2px 0 4px;
+  }
+  #rings {
+    display: flex;
+    gap: 14px;
+    -webkit-app-region: drag;
+  }
+  .ring-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  svg { display: block; }
+  .ring-label { font-size: 10px; color: #d8cfc2; margin-top: 2px; }
+  .ring-reset { font-size: 9px; color: #93897c; margin-top: 1px; text-align: center; line-height: 1.2; }
+  .pct-text { font-size: 15px; font-weight: 700; }
+  #status {
+    font-size: 9px;
+    color: #8a8078;
+    margin-top: 4px;
+  }
+  #loginBtn {
+    -webkit-app-region: no-drag;
+    margin-top: 4px;
+    font-size: 10px;
+    background: #d97706;
+    color: #1c1917;
+    border: none;
+    border-radius: 6px;
+    padding: 3px 8px;
+    cursor: pointer;
+    display: none;
+  }
+</style>
+</head>
+<body>
+  <div id="card">
+    <div id="topbar">
+      <span class="title-wrap">
+        <svg width="16" height="14" viewBox="0 0 24 20">
+          <g transform="rotate(-8 12 10)" fill="#DB7C52">
+            <rect x="3" y="6" width="18" height="9" />
+            <rect x="6" y="2" width="4" height="5" />
+            <rect x="14" y="2" width="4" height="5" />
+            <rect x="5" y="15" width="3" height="4" />
+            <rect x="10.5" y="15" width="3" height="4" />
+            <rect x="16" y="15" width="3" height="4" />
+            <rect x="8" y="9" width="2.2" height="4" fill="#241c17" />
+            <rect x="14" y="9" width="2.2" height="4" fill="#241c17" />
+          </g>
+        </svg>
+        <span class="title">Claude 사용량</span>
+      </span>
+      <span class="btn" id="refreshBtn" title="새로고침">⟳</span>
+    </div>
+    <svg id="mascot" width="46" height="40" viewBox="0 0 24 20">
+      <g transform="rotate(-8 12 10)" fill="#DB7C52">
+        <rect x="3" y="6" width="18" height="9" />
+        <rect x="6" y="2" width="4" height="5" />
+        <rect x="14" y="2" width="4" height="5" />
+        <rect x="5" y="15" width="3" height="4" />
+        <rect x="10.5" y="15" width="3" height="4" />
+        <rect x="16" y="15" width="3" height="4" />
+        <rect x="8" y="9" width="2.2" height="4" fill="#241c17" />
+        <rect x="14" y="9" width="2.2" height="4" fill="#241c17" />
+      </g>
+    </svg>
+    <div id="rings">
+      <div class="ring-wrap">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="27" stroke="#44403c" stroke-width="7" fill="none" />
+          <circle id="sessionArc" cx="32" cy="32" r="27" stroke="#3b82f6" stroke-width="7" fill="none"
+            stroke-linecap="round" transform="rotate(-90 32 32)" stroke-dasharray="169.6" stroke-dashoffset="169.6" />
+          <text id="sessionPct" x="32" y="37" text-anchor="middle" class="pct-text" fill="#f5f0ea" font-size="15">--%</text>
+        </svg>
+        <div class="ring-label">5시간 세션</div>
+        <div class="ring-reset" id="sessionReset">-</div>
+      </div>
+      <div class="ring-wrap">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="27" stroke="#44403c" stroke-width="7" fill="none" />
+          <circle id="weeklyArc" cx="32" cy="32" r="27" stroke="#3b82f6" stroke-width="7" fill="none"
+            stroke-linecap="round" transform="rotate(-90 32 32)" stroke-dasharray="169.6" stroke-dashoffset="169.6" />
+          <text id="weeklyPct" x="32" y="37" text-anchor="middle" class="pct-text" fill="#f5f0ea" font-size="15">--%</text>
+        </svg>
+        <div class="ring-label">주간 한도</div>
+        <div class="ring-reset" id="weeklyReset">-</div>
+      </div>
+    </div>
+    <div id="status">불러오는 중...</div>
+    <button id="loginBtn">로그인 필요 &rarr; 클릭</button>
+  </div>
+
+<script>
+  const CIRC = 2 * Math.PI * 27; // 169.6
+
+  function colorFor(pct) {
+    if (pct >= 90) return '#ef4444';
+    if (pct >= 70) return '#f59e0b';
+    return '#3b82f6';
+  }
+
+  function setRing(arcEl, pctEl, pct) {
+    const clamped = Math.max(0, Math.min(100, pct));
+    const offset = CIRC * (1 - clamped / 100);
+    arcEl.setAttribute('stroke-dashoffset', offset.toFixed(1));
+    arcEl.setAttribute('stroke', colorFor(clamped));
+    pctEl.textContent = clamped + '%';
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    document.getElementById('status').textContent = '새로고침 중...';
+    window.widgetAPI.refreshNow();
+  });
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    window.widgetAPI.openLogin();
+  });
+
+  window.widgetAPI.onUsageData((data) => {
+    const statusEl = document.getElementById('status');
+    const loginBtn = document.getElementById('loginBtn');
+
+    if (data.needsLogin) {
+      loginBtn.style.display = 'inline-block';
+      statusEl.textContent = '로그인이 필요해요';
+      return;
+    }
+    loginBtn.style.display = 'none';
+
+    if (data.session && data.session.pct !== null) {
+      setRing(document.getElementById('sessionArc'), document.getElementById('sessionPct'), data.session.pct);
+      document.getElementById('sessionReset').textContent = data.session.reset;
+    }
+    if (data.weekly && data.weekly.pct !== null) {
+      setRing(document.getElementById('weeklyArc'), document.getElementById('weeklyPct'), data.weekly.pct);
+      document.getElementById('weeklyReset').textContent = data.weekly.reset;
+    }
+
+    if (data.ok) {
+      statusEl.textContent = '업데이트: ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    } else {
+      statusEl.textContent = '데이터를 읽지 못했어요';
+    }
+  });
+</script>
+</body>
+</html>

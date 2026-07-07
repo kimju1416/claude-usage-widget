@@ -1,0 +1,51 @@
+{
+  "name": "claude-usage-widget",
+  "productName": "ClaudeUsageWidget",
+  "version": "1.0.0",
+  "description": "Claude 5시간/주간 사용량을 항상 위에 떠서 보여주는 위젯",
+  "main": "main.js",
+  "author": "kimju.zip",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "gen-assets": "node gen-assets.js",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "allowScripts": {
+    "electron@35.7.5": true
+  },
+  "build": {
+    "appId": "zip.kimju.claudeusagewidget",
+    "productName": "ClaudeUsageWidget",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "widget.html",
+      "assets/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "ClaudeUsageWidget-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "Claude 사용량 위젯"
+    }
+  }
+}
