@@ -72,7 +72,7 @@ function createWidgetWindow() {
   const state = loadState();
   widgetWin = new BrowserWindow({
     width: 168,
-    height: 150,
+    height: 168,
     x: typeof state.x === 'number' ? state.x : undefined,
     y: typeof state.y === 'number' ? state.y : undefined,
     frame: false,
@@ -83,6 +83,7 @@ function createWidgetWindow() {
     hasShadow: false,
     show: getMode() === 'widget',
     opacity: getOpacity(),
+    title: '',
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -91,6 +92,7 @@ function createWidgetWindow() {
     }
   });
 
+  widgetWin.setTitle('');
   widgetWin.setAlwaysOnTop(true, 'screen-saver');
   widgetWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   widgetWin.loadFile('widget.html');
