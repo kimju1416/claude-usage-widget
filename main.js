@@ -14,8 +14,15 @@ const userDataPath = app.getPath('userData');
 const stateFile = path.join(userDataPath, 'widget-state.json');
 const debugLogFile = path.join(userDataPath, 'debug.log');
 
+const MAX_DEBUG_LOG_BYTES = 500 * 1024;
+
 function debugLog(msg) {
   try {
+    const stat = fs.existsSync(debugLogFile) ? fs.statSync(debugLogFile) : null;
+    if (stat && stat.size > MAX_DEBUG_LOG_BYTES) {
+      const tail = fs.readFileSync(debugLogFile, 'utf-8').slice(-MAX_DEBUG_LOG_BYTES / 2);
+      fs.writeFileSync(debugLogFile, tail);
+    }
     fs.appendFileSync(debugLogFile, `[${new Date().toISOString()}] ${msg}\n`);
   } catch (e) {
     // 무시
@@ -155,9 +162,13 @@ async function pollUsage() {
     await workerWin.loadURL(usageUrl());
     await new Promise((r) => setTimeout(r, 2500));
     const result = await workerWin.webContents.executeJavaScript(EXTRACT_SCRIPT);
-    const url = workerWin.webContents.getURL();
-    const snippet = await workerWin.webContents.executeJavaScript('(document.body.innerText||"").slice(0,300)');
-    debugLog(`pollUsage ok=${result.ok} needsLogin=${result.needsLogin} url=${url} snippet=${JSON.stringify(snippet)}`);
+    if (result.ok) {
+      debugLog(`pollUsage ok=true 5h=${result.session.pct}% 7d=${result.weekly.pct}%`);
+    } else {
+      const url = workerWin.webContents.getURL();
+      const snippet = await workerWin.webContents.executeJavaScript('(document.body.innerText||"").slice(0,300)');
+      debugLog(`pollUsage ok=false needsLogin=${result.needsLogin} url=${url} snippet=${JSON.stringify(snippet)}`);
+    }
     sendToWidget(result);
   } catch (e) {
     debugLog(`pollUsage error: ${e.message}`);
@@ -170,6 +181,8 @@ const LOGIN_CHECK_SCRIPT = `(!location.href.includes('/login') && (
   /안녕하세요/.test(document.body.innerText || '')
 ))`;
 
+let loginCheckInFlight = false;
+
 function openLoginWindow() {
   if (!workerWin || workerWin.isDestroyed()) createWorkerWindow();
   workerWin.show();
@@ -177,15 +190,23 @@ function openLoginWindow() {
   workerWin.loadURL('https://claude.ai/login');
   debugLog('openLoginWindow: 로그인 페이지 로드');
 
+  if (loginCheckInFlight) return; // 이미 로그인 확인 루프가 돌고 있으면 중복 시작하지 않음
+  loginCheckInFlight = true;
+
   let tries = 0;
   const maxTries = 200; // 최대 약 10분 대기
   const check = setInterval(async () => {
     tries += 1;
-    if (!workerWin || workerWin.isDestroyed() || tries > maxTries) { clearInterval(check); return; }
+    if (!workerWin || workerWin.isDestroyed() || tries > maxTries) {
+      clearInterval(check);
+      loginCheckInFlight = false;
+      return;
+    }
     try {
       const loggedIn = await workerWin.webContents.executeJavaScript(LOGIN_CHECK_SCRIPT);
       if (loggedIn) {
         clearInterval(check);
+        loginCheckInFlight = false;
         debugLog(`로그인 감지됨 (시도 ${tries}회)`);
         await workerWin.loadURL(usageUrl());
         await new Promise((r) => setTimeout(r, 2500));
@@ -280,6 +301,7 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
+    if (getMode() !== 'widget') return; // 트레이 전용 모드 설정을 존중
     if (!widgetWin) { createWidgetWindow(); return; }
     widgetWin.show();
     widgetWin.focus();
