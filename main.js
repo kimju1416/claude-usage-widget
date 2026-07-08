@@ -65,6 +65,10 @@ function getShowFable() {
   return loadState().showFable === true;
 }
 
+function getColorTheme() {
+  return loadState().colorTheme === 'muted' ? 'muted' : 'vivid';
+}
+
 function widgetWidthFor(showFable) {
   return showFable ? 244 : 168; // 3개 원을 같은 크기로 나란히 배치할 만큼 넉넉하게
 }
@@ -166,7 +170,7 @@ function sendToWidget(data) {
   lastData = data;
   updateTray(data);
   if (widgetWin && !widgetWin.isDestroyed()) {
-    widgetWin.webContents.send('usage-data', { ...data, showFable: getShowFable() });
+    widgetWin.webContents.send('usage-data', { ...data, showFable: getShowFable(), colorTheme: getColorTheme() });
   }
 }
 
@@ -269,6 +273,11 @@ function applyShowFable(showFable) {
   }
 }
 
+function applyColorTheme(colorTheme) {
+  saveState({ colorTheme });
+  if (lastData) sendToWidget(lastData);
+}
+
 function createTray() {
   tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
   tray.setToolTip('Claude 사용량 위젯');
@@ -276,11 +285,21 @@ function createTray() {
   const buildMenu = () => {
     const mode = getMode();
     const opacity = getOpacity();
+    const colorTheme = getColorTheme();
     const opacityMenu = [1, 0.85, 0.7, 0.55].map((v) => ({
       label: `${Math.round(v * 100)}%`,
       type: 'radio',
       checked: Math.abs(opacity - v) < 0.001,
       click: () => { applyOpacity(v); tray.setContextMenu(buildMenu()); }
+    }));
+    const themeMenu = [
+      { key: 'vivid', label: '컬러풀 (청록/핑크/노랑)' },
+      { key: 'muted', label: '차분한 톤 (무채색)' }
+    ].map((t) => ({
+      label: t.label,
+      type: 'radio',
+      checked: colorTheme === t.key,
+      click: () => { applyColorTheme(t.key); tray.setContextMenu(buildMenu()); }
     }));
 
     return Menu.buildFromTemplate([
@@ -297,6 +316,7 @@ function createTray() {
         click: () => { applyMode('tray'); tray.setContextMenu(buildMenu()); }
       },
       { label: '위젯 투명도', submenu: opacityMenu },
+      { label: '색상 테마', submenu: themeMenu },
       {
         label: '위젯에 Fable 표시',
         type: 'checkbox',

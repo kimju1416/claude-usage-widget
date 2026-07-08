@@ -137,17 +137,16 @@
 <script>
   const CIRC = 2 * Math.PI * 27; // 169.6
 
-  function colorFor(pct) {
-    if (pct >= 90) return '#ef4444';
-    if (pct >= 70) return '#f59e0b';
-    return '#3b82f6';
-  }
+  const THEMES = {
+    vivid: { session: '#22d3ee', fable: '#ff2fa0', weekly: '#facc15' },
+    muted: { session: '#a39889', fable: '#a39889', weekly: '#a39889' }
+  };
 
-  function setRing(arcEl, pctEl, pct, circ) {
+  function setRing(arcEl, pctEl, pct, circ, color) {
     const clamped = Math.max(0, Math.min(100, pct));
     const offset = circ * (1 - clamped / 100);
     arcEl.setAttribute('stroke-dashoffset', offset.toFixed(1));
-    arcEl.setAttribute('stroke', colorFor(clamped));
+    arcEl.setAttribute('stroke', color);
     pctEl.textContent = clamped + '%';
   }
 
@@ -170,19 +169,21 @@
     }
     loginBtn.style.display = 'none';
 
+    const theme = THEMES[data.colorTheme] || THEMES.vivid;
+
     if (data.session && data.session.pct !== null) {
-      setRing(document.getElementById('sessionArc'), document.getElementById('sessionPct'), data.session.pct, CIRC);
+      setRing(document.getElementById('sessionArc'), document.getElementById('sessionPct'), data.session.pct, CIRC, theme.session);
       document.getElementById('sessionReset').textContent = data.session.reset;
     }
     if (data.weekly && data.weekly.pct !== null) {
-      setRing(document.getElementById('weeklyArc'), document.getElementById('weeklyPct'), data.weekly.pct, CIRC);
+      setRing(document.getElementById('weeklyArc'), document.getElementById('weeklyPct'), data.weekly.pct, CIRC, theme.weekly);
       document.getElementById('weeklyReset').textContent = data.weekly.reset;
     }
 
     const fableWrap = document.getElementById('fableWrap');
     fableWrap.style.display = data.showFable ? 'flex' : 'none';
     if (data.showFable && data.fable && data.fable.pct !== null) {
-      setRing(document.getElementById('fableArc'), document.getElementById('fablePct'), data.fable.pct, CIRC);
+      setRing(document.getElementById('fableArc'), document.getElementById('fablePct'), data.fable.pct, CIRC, theme.fable);
       document.getElementById('fableReset').textContent = data.fable.reset;
     }
 
