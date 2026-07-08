@@ -98,6 +98,7 @@ function createWidgetWindow() {
     y: typeof state.y === 'number' ? state.y : undefined,
     frame: false,
     transparent: true,
+    backgroundColor: '#00000000', // Electron 기본 배경색(흰색)이 비쳐 보이는 걸 방지 — 완전 투명으로 명시
     resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
