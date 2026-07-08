@@ -61,24 +61,34 @@ function getOpacity() {
   return typeof v === 'number' ? v : 1;
 }
 
+function getShowFable() {
+  return loadState().showFable === true;
+}
+
+function widgetWidthFor(showFable) {
+  return showFable ? 216 : 168;
+}
+
 const EXTRACT_SCRIPT = `(function(){
   const text = document.body.innerText || '';
   const sessionM = text.match(/현재\\s*세션\\s*\\n([^\\n]+)\\s*\\n(\\d+)%\\s*사용됨/);
   const weeklyM = text.match(/모든\\s*모델\\s*\\n([^\\n]+)\\s*\\n(\\d+)%\\s*사용됨/);
+  const fableM = text.match(/Fable\\s*\\n([^\\n]+)\\s*\\n(\\d+)%\\s*사용됨/);
   const hasLoginForm = !!document.querySelector('input[type="password"], input[name="email"]') ||
     /계속하려면 로그인|Continue with|Log in to Claude/i.test(text);
   return {
     ok: !!(sessionM && weeklyM),
     needsLogin: !sessionM && !weeklyM && hasLoginForm,
     session: sessionM ? { reset: sessionM[1].trim(), pct: parseInt(sessionM[2], 10) } : null,
-    weekly: weeklyM ? { reset: weeklyM[1].trim(), pct: parseInt(weeklyM[2], 10) } : null
+    weekly: weeklyM ? { reset: weeklyM[1].trim(), pct: parseInt(weeklyM[2], 10) } : null,
+    fable: fableM ? { reset: fableM[1].trim(), pct: parseInt(fableM[2], 10) } : null
   };
 })()`;
 
 function createWidgetWindow() {
   const state = loadState();
   widgetWin = new BrowserWindow({
-    width: 168,
+    width: widgetWidthFor(getShowFable()),
     height: 168,
     x: typeof state.x === 'number' ? state.x : undefined,
     y: typeof state.y === 'number' ? state.y : undefined,
@@ -134,6 +144,7 @@ function updateTray(data) {
   if (!tray) return;
   const fivePct = data && data.session ? data.session.pct : null;
   const sevenPct = data && data.weekly ? data.weekly.pct : null;
+  const fablePct = data && data.fable ? data.fable.pct : null;
 
   if (data && data.needsLogin) {
     tray.setToolTip('Claude 사용량 위젯 — 로그인이 필요해요');
@@ -143,16 +154,18 @@ function updateTray(data) {
     tray.setToolTip('Claude 사용량 위젯 — 불러오는 중...');
     return;
   }
-  tray.setToolTip(
-    `5시간: ${fivePct}% (${data.session.reset})\n주간: ${sevenPct}% (${data.weekly.reset})`
-  );
+  let tooltip = `5시간: ${fivePct}% (${data.session.reset})\n주간: ${sevenPct}% (${data.weekly.reset})`;
+  if (data.fable) {
+    tooltip += `\nFable: ${fablePct}% (${data.fable.reset})`;
+  }
+  tray.setToolTip(tooltip);
 }
 
 function sendToWidget(data) {
   lastData = data;
   updateTray(data);
   if (widgetWin && !widgetWin.isDestroyed()) {
-    widgetWin.webContents.send('usage-data', data);
+    widgetWin.webContents.send('usage-data', { ...data, showFable: getShowFable() });
   }
 }
 
@@ -161,9 +174,17 @@ async function pollUsage() {
   try {
     await workerWin.loadURL(usageUrl());
     await new Promise((r) => setTimeout(r, 2500));
-    const result = await workerWin.webContents.executeJavaScript(EXTRACT_SCRIPT);
+    let result = await workerWin.webContents.executeJavaScript(EXTRACT_SCRIPT);
+
+    // 설정 모달이 늦게 열리는 경우가 있어, 실패했지만 로그아웃도 아니면 한 번 더 대기 후 재시도
+    if (!result.ok && !result.needsLogin) {
+      await new Promise((r) => setTimeout(r, 2500));
+      result = await workerWin.webContents.executeJavaScript(EXTRACT_SCRIPT);
+    }
+
     if (result.ok) {
-      debugLog(`pollUsage ok=true 5h=${result.session.pct}% 7d=${result.weekly.pct}%`);
+      const fableStr = result.fable ? ` fable=${result.fable.pct}%` : '';
+      debugLog(`pollUsage ok=true 5h=${result.session.pct}% 7d=${result.weekly.pct}%${fableStr}`);
     } else {
       const url = workerWin.webContents.getURL();
       const snippet = await workerWin.webContents.executeJavaScript('(document.body.innerText||"").slice(0,300)');
@@ -238,6 +259,15 @@ function applyOpacity(opacity) {
   }
 }
 
+function applyShowFable(showFable) {
+  saveState({ showFable });
+  if (widgetWin && !widgetWin.isDestroyed()) {
+    const [, height] = widgetWin.getSize();
+    widgetWin.setSize(widgetWidthFor(showFable), height);
+    if (lastData) sendToWidget(lastData);
+  }
+}
+
 function createTray() {
   tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
   tray.setToolTip('Claude 사용량 위젯');
@@ -266,6 +296,12 @@ function createTray() {
         click: () => { applyMode('tray'); tray.setContextMenu(buildMenu()); }
       },
       { label: '위젯 투명도', submenu: opacityMenu },
+      {
+        label: '위젯에 Fable 표시',
+        type: 'checkbox',
+        checked: getShowFable(),
+        click: (menuItem) => { applyShowFable(menuItem.checked); }
+      },
       { type: 'separator' },
       { label: '지금 새로고침', click: () => pollUsage() },
       { label: '로그인 창 열기', click: () => openLoginWindow() },

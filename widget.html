@@ -44,7 +44,8 @@
   #topbar .btn:hover { opacity: 1; }
   #rings {
     display: flex;
-    gap: 14px;
+    align-items: center;
+    gap: 10px;
     margin-top: 8px;
     -webkit-app-region: drag;
   }
@@ -57,6 +58,9 @@
   .ring-label { font-size: 10px; color: #d8cfc2; margin-top: 2px; }
   .ring-reset { font-size: 9px; color: #93897c; margin-top: 1px; text-align: center; line-height: 1.2; }
   .pct-text { font-size: 15px; font-weight: 700; }
+  #fableWrap { display: none; }
+  #fableWrap .pct-text { font-size: 11px; }
+  #fableWrap .ring-label { font-size: 9px; }
   #status {
     font-size: 9px;
     color: #8a8078;
@@ -107,6 +111,16 @@
         <div class="ring-label">5시간 세션</div>
         <div class="ring-reset" id="sessionReset">-</div>
       </div>
+      <div class="ring-wrap" id="fableWrap">
+        <svg width="40" height="40" viewBox="0 0 40 40">
+          <circle cx="20" cy="20" r="16" stroke="#44403c" stroke-width="5" fill="none" />
+          <circle id="fableArc" cx="20" cy="20" r="16" stroke="#3b82f6" stroke-width="5" fill="none"
+            stroke-linecap="round" transform="rotate(-90 20 20)" stroke-dasharray="100.5" stroke-dashoffset="100.5" />
+          <text id="fablePct" x="20" y="24" text-anchor="middle" class="pct-text" fill="#f5f0ea" font-size="11">--%</text>
+        </svg>
+        <div class="ring-label">Fable</div>
+        <div class="ring-reset" id="fableReset">-</div>
+      </div>
       <div class="ring-wrap">
         <svg width="64" height="64" viewBox="0 0 64 64">
           <circle cx="32" cy="32" r="27" stroke="#44403c" stroke-width="7" fill="none" />
@@ -124,6 +138,7 @@
 
 <script>
   const CIRC = 2 * Math.PI * 27; // 169.6
+  const FABLE_CIRC = 2 * Math.PI * 16; // 100.5
 
   function colorFor(pct) {
     if (pct >= 90) return '#ef4444';
@@ -131,9 +146,9 @@
     return '#3b82f6';
   }
 
-  function setRing(arcEl, pctEl, pct) {
+  function setRing(arcEl, pctEl, pct, circ) {
     const clamped = Math.max(0, Math.min(100, pct));
-    const offset = CIRC * (1 - clamped / 100);
+    const offset = circ * (1 - clamped / 100);
     arcEl.setAttribute('stroke-dashoffset', offset.toFixed(1));
     arcEl.setAttribute('stroke', colorFor(clamped));
     pctEl.textContent = clamped + '%';
@@ -159,12 +174,19 @@
     loginBtn.style.display = 'none';
 
     if (data.session && data.session.pct !== null) {
-      setRing(document.getElementById('sessionArc'), document.getElementById('sessionPct'), data.session.pct);
+      setRing(document.getElementById('sessionArc'), document.getElementById('sessionPct'), data.session.pct, CIRC);
       document.getElementById('sessionReset').textContent = data.session.reset;
     }
     if (data.weekly && data.weekly.pct !== null) {
-      setRing(document.getElementById('weeklyArc'), document.getElementById('weeklyPct'), data.weekly.pct);
+      setRing(document.getElementById('weeklyArc'), document.getElementById('weeklyPct'), data.weekly.pct, CIRC);
       document.getElementById('weeklyReset').textContent = data.weekly.reset;
+    }
+
+    const fableWrap = document.getElementById('fableWrap');
+    fableWrap.style.display = data.showFable ? 'flex' : 'none';
+    if (data.showFable && data.fable && data.fable.pct !== null) {
+      setRing(document.getElementById('fableArc'), document.getElementById('fablePct'), data.fable.pct, FABLE_CIRC);
+      document.getElementById('fableReset').textContent = data.fable.reset;
     }
 
     if (data.ok) {
