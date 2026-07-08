@@ -66,7 +66,7 @@ function getShowFable() {
 }
 
 function widgetWidthFor(showFable) {
-  return showFable ? 216 : 168;
+  return showFable ? 244 : 168; // 3개 원을 같은 크기로 나란히 배치할 만큼 넉넉하게
 }
 
 const EXTRACT_SCRIPT = `(function(){
@@ -98,6 +98,7 @@ function createWidgetWindow() {
     alwaysOnTop: true,
     skipTaskbar: true,
     hasShadow: false,
+    roundedCorners: false, // Windows 11 자동 모서리 둥글림과 우리 CSS 모서리가 어긋나면서 상단에 흰 틈이 보이는 걸 방지
     show: getMode() === 'widget',
     opacity: getOpacity(),
     title: '',
