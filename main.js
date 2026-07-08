@@ -2,6 +2,16 @@ const { app, BrowserWindow, Tray, Menu, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+// Windows의 크로미움 "네이티브 창 가림(occlusion) 감지" 기능이 투명/항상-위 창을 간헐적으로
+// 흰 배경으로 잘못 그리게 만드는 알려진 문제가 있어 — 위젯 카드가 나타났다 사라졌다 하는 흰 조각의 원인.
+// 이 기능을 꺼서 재발을 방지한다.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+
+// 기본 D3D11 ANGLE 백엔드가 일부 GPU 드라이버(특히 AMD)에서 투명 창의 둥근 모서리
+// 안티앨리어싱 경계를 간헐적으로 불투명 흰색으로 잘못 합성하는 문제가 있음.
+// OpenGL 백엔드로 바꿔 같은 GPU 가속을 유지하면서 그 합성 버그를 우회한다.
+app.commandLine.appendSwitch('use-angle', 'gl');
+
 const POLL_INTERVAL_MS = 60 * 1000; // 1분마다 자동 새로고침
 
 // 해시(#settings/usage)만 다르고 나머지 URL이 같으면 Electron/Chromium이 "같은 문서 내 이동"으로 처리해
