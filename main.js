@@ -79,6 +79,10 @@ function getColorTheme() {
   return loadState().colorTheme === 'muted' ? 'muted' : 'vivid';
 }
 
+function getAlwaysOnTop() {
+  return loadState().alwaysOnTop !== false; // 기본값 true — 기존 동작 유지
+}
+
 function widgetWidthFor(showFable) {
   return showFable ? 244 : 168; // 3개 원을 같은 크기로 나란히 배치할 만큼 넉넉하게
 }
@@ -110,7 +114,7 @@ function createWidgetWindow() {
     transparent: true,
     backgroundColor: '#00000000', // Electron 기본 배경색(흰색)이 비쳐 보이는 걸 방지 — 완전 투명으로 명시
     resizable: false,
-    alwaysOnTop: true,
+    alwaysOnTop: getAlwaysOnTop(),
     skipTaskbar: true,
     hasShadow: false,
     roundedCorners: false, // Windows 11 자동 모서리 둥글림과 우리 CSS 모서리가 어긋나면서 상단에 흰 틈이 보이는 걸 방지
@@ -127,7 +131,7 @@ function createWidgetWindow() {
   });
 
   widgetWin.setTitle('');
-  widgetWin.setAlwaysOnTop(true, 'screen-saver');
+  if (getAlwaysOnTop()) widgetWin.setAlwaysOnTop(true, 'screen-saver');
   widgetWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   widgetWin.loadFile('widget.html');
 
@@ -290,6 +294,13 @@ function applyColorTheme(colorTheme) {
   if (lastData) sendToWidget(lastData);
 }
 
+function applyAlwaysOnTop(alwaysOnTop) {
+  saveState({ alwaysOnTop });
+  if (widgetWin && !widgetWin.isDestroyed()) {
+    widgetWin.setAlwaysOnTop(alwaysOnTop, alwaysOnTop ? 'screen-saver' : undefined);
+  }
+}
+
 function createTray() {
   tray = new Tray(path.join(__dirname, 'assets', 'tray.png'));
   tray.setToolTip('Claude 사용량 위젯');
@@ -334,6 +345,12 @@ function createTray() {
         type: 'checkbox',
         checked: getShowFable(),
         click: (menuItem) => { applyShowFable(menuItem.checked); }
+      },
+      {
+        label: '항상 위에 표시',
+        type: 'checkbox',
+        checked: getAlwaysOnTop(),
+        click: (menuItem) => { applyAlwaysOnTop(menuItem.checked); }
       },
       { type: 'separator' },
       { label: '지금 새로고침', click: () => pollUsage() },
